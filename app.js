@@ -30,6 +30,8 @@
     loginForm: document.getElementById("loginForm"),
     serviceSelect: document.getElementById("serviceSelect"),
     callsignInput: document.getElementById("callsignInput"),
+    messageInput: document.getElementById("messageInput"),
+    sendBtn: document.getElementById("sendBtn"),
   };
 
   let selectedChannel = CHANNELS[0];
@@ -113,10 +115,31 @@
     for (const msg of list) {
       const div = document.createElement("div");
       div.className = "radio-line";
-      div.innerHTML = escapeHTML(msg);
+      // msg is an object: { prefixText, prefixClass, body }
+      if (typeof msg === "string") {
+        // Backward compatibility for previous string format
+        div.textContent = msg;
+      } else {
+        const prefixSpan = document.createElement("span");
+        prefixSpan.className = `radio-prefix ${msg.prefixClass || ""}`;
+        prefixSpan.textContent = msg.prefixText + ":";
+        const bodySpan = document.createElement("span");
+        bodySpan.textContent = " " + msg.body;
+        div.appendChild(prefixSpan);
+        div.appendChild(bodySpan);
+      }
       els.radioFeed.appendChild(div);
     }
     els.radioFeed.scrollTop = els.radioFeed.scrollHeight;
+  }
+
+  function buildPrefix() {
+    if (!user) return { prefixText: "[----]", prefixClass: "" };
+    const callsign = String(user.callsign).padStart(4, "0");
+    const isTVP = user.service === "Thames Valley Police";
+    const prefixText = isTVP ? `[TVP-${callsign}]` : `[SCAS-${callsign}]`;
+    const prefixClass = isTVP ? "tvp" : "scas";
+    return { prefixText, prefixClass };
   }
 
   function sendMessage(rawText) {
@@ -124,14 +147,17 @@
       showLoginModal(true);
       return;
     }
-    const callsign = String(user.callsign).padStart(4, "0");
-    const formatted = `[${callsign}]: (${rawText})`;
+    const text = String(rawText || "").trim();
+    if (!text) return;
+    const { prefixText, prefixClass } = buildPrefix();
+    const formatted = { prefixText, prefixClass, body: text };
     const list = messagesByChannel[selectedChannel] || (messagesByChannel[selectedChannel] = []);
     list.push(formatted);
     // Keep last 500 per channel to avoid unbounded growth
     if (list.length > 500) list.splice(0, list.length - 500);
     saveMessages();
     renderFeed();
+    if (els.messageInput) els.messageInput.value = "";
   }
 
   function handleTabClick(event) {
@@ -158,6 +184,17 @@
   function bindEvents() {
     els.tabs.forEach((tab) => tab.addEventListener("click", handleTabClick));
     els.changeIdentityBtn.addEventListener("click", () => showLoginModal(true));
+    if (els.sendBtn) {
+      els.sendBtn.addEventListener("click", () => sendMessage(els.messageInput.value));
+    }
+    if (els.messageInput) {
+      els.messageInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          sendMessage(els.messageInput.value);
+        }
+      });
+    }
 
     els.callsignInput.addEventListener("input", () => {
       els.callsignInput.value = els.callsignInput.value.replace(/[^0-9]/g, "").slice(0, 4);
