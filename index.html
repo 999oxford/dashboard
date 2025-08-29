@@ -8,6 +8,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./styles.css" />
+  <!-- Firebase (for realtime sync) - fill config in app.js -->
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
   <header class="app-header">
@@ -25,6 +28,7 @@
         <button class="tab active" role="tab" aria-selected="true" data-channel="Global">Global</button>
         <button class="tab" role="tab" aria-selected="false" data-channel="Thames Valley Police">Thames Valley Police</button>
         <button class="tab" role="tab" aria-selected="false" data-channel="South Central Ambulance Service">South Central Ambulance Service</button>
+        <button id="clearBtn" class="clear-btn" title="Clear messages for this channel">Clear</button>
       </div>
       <div class="radio-feed" id="radioFeed" aria-live="polite"></div>
       <div class="composer" aria-label="Compose message">

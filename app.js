@@ -1,4 +1,23 @@
 (() => {
+  // --- Firebase config (replace with your project's keys) ---
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID",
+  };
+  let db = null;
+  try {
+    if (window.firebase && firebase?.apps?.length === 0) {
+      firebase.initializeApp(firebaseConfig);
+    } else if (window.firebase && firebase?.apps?.length > 0) {
+      // already initialized
+    }
+    if (window.firebase) {
+      db = firebase.firestore();
+    }
+  } catch (e) {
+    console.warn("Firebase init skipped or failed (local dev):", e);
+  }
   const CHANNELS = [
     "Global",
     "Thames Valley Police",
@@ -32,6 +51,7 @@
     callsignInput: document.getElementById("callsignInput"),
     messageInput: document.getElementById("messageInput"),
     sendBtn: document.getElementById("sendBtn"),
+    clearBtn: document.getElementById("clearBtn"),
   };
 
   let selectedChannel = CHANNELS[0];
@@ -125,8 +145,12 @@
         prefixSpan.textContent = msg.prefixText + ":";
         const bodySpan = document.createElement("span");
         bodySpan.textContent = " " + msg.body;
+        const ts = document.createElement("span");
+        ts.className = "timestamp";
+        ts.textContent = msg.timeStr ? msg.timeStr : "";
         div.appendChild(prefixSpan);
         div.appendChild(bodySpan);
+        div.appendChild(ts);
       }
       els.radioFeed.appendChild(div);
     }
@@ -150,7 +174,9 @@
     const text = String(rawText || "").trim();
     if (!text) return;
     const { prefixText, prefixClass } = buildPrefix();
-    const formatted = { prefixText, prefixClass, body: text };
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const formatted = { prefixText, prefixClass, body: text, timeStr, ts: Date.now() };
     const list = messagesByChannel[selectedChannel] || (messagesByChannel[selectedChannel] = []);
     list.push(formatted);
     // Keep last 500 per channel to avoid unbounded growth
@@ -158,6 +184,20 @@
     saveMessages();
     renderFeed();
     if (els.messageInput) els.messageInput.value = "";
+
+    // Broadcast to Firestore
+    if (db) {
+      try {
+        db.collection("radioChannels").doc(selectedChannel).collection("messages").add({
+          body: text,
+          prefixText,
+          prefixClass,
+          ts: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+      } catch (e) {
+        console.warn("Failed to send to Firestore:", e);
+      }
+    }
   }
 
   function handleTabClick(event) {
@@ -184,6 +224,24 @@
   function bindEvents() {
     els.tabs.forEach((tab) => tab.addEventListener("click", handleTabClick));
     els.changeIdentityBtn.addEventListener("click", () => showLoginModal(true));
+    if (els.clearBtn) {
+      els.clearBtn.addEventListener("click", async () => {
+        messagesByChannel[selectedChannel] = [];
+        saveMessages();
+        renderFeed();
+        if (db) {
+          try {
+            // delete recent docs (client-side simple clear)
+            const snap = await db.collection("radioChannels").doc(selectedChannel).collection("messages").limit(100).get();
+            const batch = db.batch();
+            snap.forEach((doc) => batch.delete(doc.ref));
+            await batch.commit();
+          } catch (e) {
+            console.warn("Failed to clear remote messages:", e);
+          }
+        }
+      });
+    }
     if (els.sendBtn) {
       els.sendBtn.addEventListener("click", () => sendMessage(els.messageInput.value));
     }
@@ -229,6 +287,36 @@
   mountQuickButtons();
   renderTabs();
   renderFeed();
+  // Real-time subscription
+  if (db) {
+    CHANNELS.forEach((ch) => {
+      db.collection("radioChannels").doc(ch).collection("messages").orderBy("ts", "asc").onSnapshot((snap) => {
+        const list = messagesByChannel[ch] || (messagesByChannel[ch] = []);
+        let changed = false;
+        snap.docChanges().forEach((change) => {
+          if (change.type === 'added') {
+            const d = change.doc.data();
+            const date = d.ts && d.ts.toDate ? d.ts.toDate() : new Date();
+            const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const entry = { prefixText: d.prefixText, prefixClass: d.prefixClass, body: d.body, timeStr, ts: (date.getTime ? date.getTime() : Date.now()) };
+            // prevent duplicates: if same ts+body+prefix exists, skip
+            const key = entry.prefixText + '|' + entry.body + '|' + entry.ts;
+            const exists = list.some((x) => (x.prefixText + '|' + x.body + '|' + x.ts) === key);
+            if (!exists) {
+              list.push(entry);
+              changed = true;
+            }
+          }
+        });
+        if (changed) {
+          // Clamp list size
+          if (list.length > 500) list.splice(0, list.length - 500);
+          saveMessages();
+          if (selectedChannel === ch) renderFeed();
+        }
+      });
+    });
+  }
   if (!user) {
     showLoginModal(true);
   } else {
