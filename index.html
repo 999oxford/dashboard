@@ -27,6 +27,10 @@
         <button class="tab" role="tab" aria-selected="false" data-channel="South Central Ambulance Service">South Central Ambulance Service</button>
       </div>
       <div class="radio-feed" id="radioFeed" aria-live="polite"></div>
+      <div class="composer" aria-label="Compose message">
+        <input id="messageInput" type="text" placeholder="Type a message and press Enter…" autocomplete="off" />
+        <button id="sendBtn" class="primary" type="button">Send</button>
+      </div>
     </section>
 
     <section class="side-panel">
@@ -53,7 +57,7 @@
         </select>
 
         <label for="callsignInput">Callsign (4 digits)</label>
-        <input id="callsignInput" type="text" inputmode="numeric" pattern="\\d{4}" maxlength="4" placeholder="e.g. 1234" required />
+        <input id="callsignInput" type="text" inputmode="numeric" pattern="\d{4}" maxlength="4" placeholder="e.g. 1234" required />
 
         <div class="form-actions">
           <button type="submit" class="primary">Continue</button>
