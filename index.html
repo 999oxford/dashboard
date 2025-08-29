@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>999 Oxford Radio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">999 Oxford Radio</div>
+    <div class="user-info">
+      <span id="userService"></span>
+      <span id="userCallsign" class="callsign"></span>
+      <button id="changeIdentityBtn" class="link-button" title="Change service or callsign">Change</button>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <section class="radio-panel">
+      <div class="channel-tabs" role="tablist" aria-label="Channels">
+        <button class="tab active" role="tab" aria-selected="true" data-channel="Global">Global</button>
+        <button class="tab" role="tab" aria-selected="false" data-channel="Thames Valley Police">Thames Valley Police</button>
+        <button class="tab" role="tab" aria-selected="false" data-channel="South Central Ambulance Service">South Central Ambulance Service</button>
+      </div>
+      <div class="radio-feed" id="radioFeed" aria-live="polite"></div>
+    </section>
+
+    <section class="side-panel">
+      <div class="quick-messages">
+        <h2>Quick messages</h2>
+        <div class="quick-grid" id="quickGrid"></div>
+      </div>
+      <div class="placeholder">
+        <h2>Placeholder</h2>
+        <div class="placeholder-body">This area is reserved for future features.</div>
+      </div>
+    </section>
+  </main>
+
+  <div class="modal-backdrop" id="loginModal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-labelledby="loginTitle" aria-modal="true">
+      <h2 id="loginTitle">Identify yourself</h2>
+      <form id="loginForm" novalidate>
+        <label for="serviceSelect">Service</label>
+        <select id="serviceSelect" required>
+          <option value="">Select service</option>
+          <option value="Thames Valley Police">Thames Valley Police (TVP)</option>
+          <option value="South Central Ambulance Service">South Central Ambulance Service (SCAS)</option>
+        </select>
+
+        <label for="callsignInput">Callsign (4 digits)</label>
+        <input id="callsignInput" type="text" inputmode="numeric" pattern="\\d{4}" maxlength="4" placeholder="e.g. 1234" required />
+
+        <div class="form-actions">
+          <button type="submit" class="primary">Continue</button>
+        </div>
+        <p class="form-hint">Your service and callsign are stored only in this browser.</p>
+      </form>
+    </div>
+  </div>
+
+  <script src="./app.js"></script>
+  <noscript>This app requires JavaScript enabled.</noscript>
+</body>
+</html>
+
